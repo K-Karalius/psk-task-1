@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Teacher Manager</title>
+    <style>
+        body { font-family: sans-serif; max-width: 600px; margin: auto; }
+        table { width: 100%; border-collapse: collapse; margin-bottom: 1em; }
+        th, td { border: 1px solid #ccc; padding: 0.5em; text-align: left; }
+        input, button { padding: 0.5em; margin: 0.2em 0; }
+    </style>
+</head>
+<body>
+<h1>Teacher Manager</h1>
+
+<h2>Create / Update</h2>
+<form id="teacherForm">
+    <input type="hidden" id="teacherId" />
+    <input type="hidden" id="version" />
+    <label>
+        Name:
+        <input type="text" id="name" required />
+    </label>
+    <br/>
+    <button type="submit">Save</button>
+    <button type="button" onclick="resetForm()">Clear</button>
+</form>
+
+<h2>All Teachers</h2>
+<table>
+    <thead>
+    <tr>
+        <th>Name</th>
+        <th>Version</th>
+        <th>Actions</th>
+    </tr>
+    </thead>
+    <tbody id="teacherTable"></tbody>
+</table>
+
+<h2>Long-running Async Task</h2>
+<button onclick="startTimer()">Start Calculation</button>
+<button onclick="checkTimer()">Check Status</button>
+<div id="timerStatus" style="margin-top: 1em; font-weight: bold;"></div>
+
+<script>
+    const apiBase = '/teachers';
+
+    async function loadTeachers() {
+        const res = await fetch(apiBase);
+        const list = await res.json();
+        const tbody = document.getElementById('teacherTable');
+        tbody.innerHTML = '';
+        list.forEach(t => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+              <td>${t.name}</td>
+              <td>${t.version}</td>
+              <td>
+                <button onclick='edit("${t.id}", "${t.name}", ${t.version})'>Edit</button>
+                <button onclick='del("${t.id}")'>Delete</button>
+              </td>`;
+            tbody.appendChild(tr);
+        });
+    }
+
+    function edit(id, name, version) {
+        document.getElementById('teacherId').value = id;
+        document.getElementById('name').value = name;
+        document.getElementById('version').value = version;
+    }
+
+    function resetForm() {
+        document.getElementById('teacherForm').reset();
+        document.getElementById('teacherId').value = '';
+        document.getElementById('version').value = '';
+    }
+
+    document.getElementById('teacherForm').addEventListener('submit', async e => {
+        e.preventDefault();
+        const id = document.getElementById('teacherId').value;
+        const version = document.getElementById('version').value;
+        const payload = {
+            name: document.getElementById('name').value,
+        };
+        let method, url;
+        if (id) {
+            payload.id = id;
+            payload.version = Number(version);
+            method = 'PUT';
+            url = apiBase;
+        } else {
+            method = 'POST';
+            url = apiBase;
+        }
+
+        const res = await fetch(url, {
+            method,
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+
+        if (res.ok) {
+            resetForm();
+            await loadTeachers();
+        } else if (res.status === 409) {
+            const latestRes = await fetch(`${apiBase}/${id}`);
+            if (!latestRes.ok) {
+                alert("Failed to fetch latest version.");
+                return;
+            }
+
+            const latest = await latestRes.json();
+            const confirmMerge = confirm(
+                `Version conflict detected!\n\n` +
+                `Latest name: "${latest.name}"\nYour input: "${payload.name}"\n\n` +
+                `Do you want to overwrite with your version?`
+            );
+
+            if (confirmMerge) {
+                const merged = {
+                    ...latest,
+                    name: payload.name
+                };
+
+                const retryRes = await fetch(apiBase, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(merged)
+                });
+
+                if (retryRes.ok) {
+                    resetForm();
+                    await loadTeachers();
+                }
+            }
+        } else {
+            alert('Error: ' + res.statusText);
+        }
+    });
+
+    async function del(id) {
+        if (!confirm('Really delete?')) return;
+        const res = await fetch(`${apiBase}?teacherId=${id}`, { method: 'DELETE' });
+        if (res.ok) {
+            await loadTeachers();
+        } else {
+            alert('Delete failed: ' + res.statusText);
+        }
+    }
+
+    const timerApiBase = '/timer';
+
+    async function startTimer() {
+        const res = await fetch(`${timerApiBase}/start`, { method: 'POST' });
+        const result = await res.json();
+        document.getElementById('timerStatus').innerText =
+            `${result.message} (status: ${result.status})`;
+    }
+
+    async function checkTimer() {
+        const res = await fetch(`${timerApiBase}/status`);
+        const result = await res.json();
+        if (result.status === 'done') {
+            document.getElementById('timerStatus').innerText =
+                `Calculation complete. Result: ${result.result}`;
+        } else {
+            document.getElementById('timerStatus').innerText =
+                `Status: ${result.status}`;
+        }
+    }
+
+    // Initial load
+    loadTeachers();
+</script>
+</body>
+</html>

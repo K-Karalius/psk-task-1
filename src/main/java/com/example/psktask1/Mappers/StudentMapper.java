@@ -1,6 +1,6 @@
 package com.example.psktask1.Mappers;
 
-import com.example.psktask1.Dtos.StudentDto;
+import com.example.psktask1.Dtos.StudentDtos.StudentDto;
 import com.example.psktask1.Entities.Student;
 import org.mapstruct.Mapper;
 import org.mapstruct.factory.Mappers;
@@ -13,4 +13,5 @@ public interface StudentMapper {
     StudentMapper INSTANCE = Mappers.getMapper(StudentMapper.class);
 
     List<StudentDto> studentsToStudentDtos(List<Student> student);
+    StudentDto studentToStudentDto(Student student);
 }

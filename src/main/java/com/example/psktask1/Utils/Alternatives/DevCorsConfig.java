@@ -1,17 +1,20 @@
-package com.example.psktask1.Configurations;
+package com.example.psktask1.Utils.Alternatives;
+
 
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Profile;
 import org.springframework.web.servlet.config.annotation.CorsRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 @Configuration
-public class Config implements WebMvcConfigurer {
+@Profile("dev")
+public class DevCorsConfig implements WebMvcConfigurer {
 
     @Override
     public void addCorsMappings(CorsRegistry registry) {
         registry.addMapping("/**")
-                .allowedOrigins("*")
-                .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
-                .allowedHeaders("*");
+                .allowedOriginPatterns("*")
+                .allowedMethods("*")
+                .allowCredentials(true);
     }
 }

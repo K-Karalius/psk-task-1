@@ -1,14 +1,19 @@
 package com.example.psktask1.Entities;
 
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 
 import java.util.List;
 import java.util.UUID;
 
 @Data
 @Entity
+@Builder
+@AllArgsConstructor
+@NoArgsConstructor
 public class Teacher {
 
     @Id
@@ -19,4 +24,8 @@ public class Teacher {
 
     @OneToMany(mappedBy = "teacher")
     private List<Course> courses;
+
+    @Version
+    @Column(name = "version", nullable = false)
+    private long version;
 }
